@@ -4,17 +4,14 @@ from tabulate import tabulate
 import csv
 
 def fetch_events(url: str) -> list:
-    """
-    Fetches upcoming events from the provided URL.
+    # This 'User-Agent' tells the server you are using a real browser on a Mac
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
     
-    Args:
-        url (str): The URL of the hackathon page to scrape.
-        
-    Returns:
-        list: A list of dictionaries, each containing event details.
-    """
     try:
-        response = requests.get(url)
+        # We add a timeout so it doesn't stay 'stuck' forever
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
     except requests.RequestException as e:
         print(f"Error fetching {url}: {e}")
@@ -24,19 +21,27 @@ def fetch_events(url: str) -> list:
     events = []
     
     # Assuming the structure of the HTML is known
-    event_elements = soup.find_all('div', class_='event-item')  # Adjust this selector based on the actual HTML structure
+    # Find the product containers
+    event_elements = soup.find_all('div', class_='caption')
     
     for element in event_elements:
-        event_name = element.find('h2').text.strip()
-        event_date = element.find('span', class_='date').text.strip()
-        application_link = element.find('a')['href']
+        # Find the product title (stored in an <a> tag)
+        title_element = element.find('a', class_='title')
+        # Find the price (stored in an <h4> tag)
+        price_element = element.find('h4', class_='price')
         
-        events.append({
-            'Event Name': event_name,
-            'Date': event_date,
-            'Application Link': application_link
-        })
-    
+        if title_element and price_element:
+            event_name = title_element.text.strip()
+            # We'll map 'Price' to our 'Date' column for this test
+            event_date = price_element.text.strip() 
+            # Get the link (it's relative, so we append the base URL)
+            link = "https://webscraper.io" + title_element['href']
+            
+            events.append({
+                'Event Name': event_name,
+                'Price/Date': event_date,
+                'Application Link': link
+            })    
     return events
 
 def display_events(events: list):
@@ -65,7 +70,7 @@ def save_to_csv(events: list, filename: str = 'opportunities.csv'):
         writer.writerows(events)
 
 def main():
-    url = 'https://unstop.io/hackathons'  # Replace with the actual URL
+    url = 'https://webscraper.io/test-sites/e-commerce/allinone'
     events = fetch_events(url)
     
     if not events:
